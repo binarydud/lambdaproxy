@@ -3,6 +3,7 @@ package pylon
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -36,6 +37,12 @@ func buildRequest(ctx *context.Context, event *events.APIGatewayProxyRequest) (*
 	for k, v := range event.Headers {
 		req.Header.Set(k, v)
 	}
+	hbody, err := json.Marshal(event.RequestContext)
+	if err != nil {
+		return nil, fmt.Errorf("Marshal request context: %s", err)
+	}
+	req.Header.Set("X-ApiGatewayProxy-Context", string(hbody))
+
 	req.Host = event.Headers["Host"]
 	return req, nil
 }

@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 )
 
-//cribbed from https://github.com/apex/go-apex/blob/415680d65fd80caf4e7da2b79594c11e96347a38/proxy/responsewriter.go
+//originally from from https://github.com/apex/go-apex/blob/415680d65fd80caf4e7da2b79594c11e96347a38/proxy/responsewriter.go
 var DefaultTextContentTypes = []string{
 	`text/.*`,
 	`application/json`,
