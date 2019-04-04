@@ -2,6 +2,7 @@ package pylon
 
 import (
 	"io"
+	"log"
 	"net/http"
 	"testing"
 )
@@ -20,11 +21,15 @@ func TestALBResponseWriter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res := &GatewayResponseWriter{}
+	res := &ALBResponseWriter{}
 	handler.ServeHTTP(res, req)
 	if res.response.StatusCode != 200 {
 		t.Error("Invalid StatusCode")
 	}
 	res.finish()
+	if res.response.StatusDescription != "200 OK" {
+		log.Print(res.response.StatusDescription)
+		t.Error("Invalid StatusDescription")
+	}
 
 }
