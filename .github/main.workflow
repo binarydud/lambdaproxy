@@ -12,7 +12,7 @@ action "fmt" {
 }
 
 action "test" {
-  uses = "./.github/actions"
+  uses = "./.github/actions/go"
   args = "make test"
 }
 
