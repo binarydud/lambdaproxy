@@ -12,7 +12,7 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 )
 
-func buildRequest(ctx *context.Context, event *events.APIGatewayProxyRequest) (*http.Request, error) {
+func buildRequestFromALB(event *events.ALBTargetGroupRequest) (*http.Request, error) {
 	u, err := url.Parse(event.Path)
 	if err != nil {
 		return nil, fmt.Errorf("Parse request path: %s", err)
@@ -46,13 +46,15 @@ func buildRequest(ctx *context.Context, event *events.APIGatewayProxyRequest) (*
 	req.Host = event.Headers["Host"]
 	return req, nil
 }
-func ProxyEvent(handler http.Handler) func(ctx context.Context, event events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	return func(ctx context.Context, event events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-		req, err := buildRequest(&ctx, &event)
+
+// ProxyEvent ...
+func ALBProxyEvent(handler http.Handler) func(ctx context.Context, event events.ALBTargetGroupRequest) (events.ALBTargetGroupResponse, error) {
+	return func(ctx context.Context, request events.ALBTargetGroupRequest) (events.ALBTargetGroupResponse, error) {
+		req, err := buildRequestFromALB(&request)
 		if err != nil {
-			return events.APIGatewayProxyResponse{}, fmt.Errorf("Build request: %s", err)
+			return events.ALBTargetGroupResponse{}, fmt.Errorf("Build request: %s", err)
 		}
-		res := &ResponseWriter{}
+		res := &ALBResponseWriter{}
 		handler.ServeHTTP(res, req)
 		res.finish()
 
