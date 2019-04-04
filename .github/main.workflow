@@ -12,7 +12,7 @@ action "fmt" {
 }
 
 action "test" {
-  uses = "docker:://golang:1:11-alpine"
+  uses = "docker://golang:1:11-alpine"
   args = "make test"
 }
 
