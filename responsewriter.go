@@ -3,6 +3,7 @@ package pylon
 import (
 	"bytes"
 	"encoding/base64"
+	"fmt"
 	"log"
 	"net/http"
 	"regexp"
@@ -45,28 +46,57 @@ func SetTextContentTypes(types []string) error {
 	return nil
 }
 
-type ResponseWriter struct {
+type PylonResponse struct {
+	StatusCode        int                 `json:"statusCode"`
+	Headers           map[string]string   `json:"headers"`
+	MultiValueHeaders map[string][]string `json:"multiValueHeaders"`
+	Body              string              `json:"body"`
+	IsBase64Encoded   bool                `json:"isBase64Encoded"`
+}
+
+type GatewayResponseWriter struct {
 	response       events.APIGatewayProxyResponse
 	output         bytes.Buffer
 	headers        http.Header
 	headersWritten bool
+	// ResponseWriter
 }
 
-func (w *ResponseWriter) Header() http.Header {
+type ALBResponseWriter struct {
+	response       events.ALBTargetGroupResponse
+	output         bytes.Buffer
+	headers        http.Header
+	headersWritten bool
+	// ResponseWriter
+}
+
+func (w *GatewayResponseWriter) Header() http.Header {
+	if w.headers == nil {
+		w.headers = make(http.Header)
+	}
+	return w.headers
+}
+func (w *ALBResponseWriter) Header() http.Header {
 	if w.headers == nil {
 		w.headers = make(http.Header)
 	}
 	return w.headers
 }
 
-func (w *ResponseWriter) Write(bs []byte) (int, error) {
+func (w *GatewayResponseWriter) Write(bs []byte) (int, error) {
+	if !w.headersWritten {
+		w.WriteHeader(http.StatusOK)
+	}
+	return w.output.Write(bs)
+}
+func (w *ALBResponseWriter) Write(bs []byte) (int, error) {
 	if !w.headersWritten {
 		w.WriteHeader(http.StatusOK)
 	}
 	return w.output.Write(bs)
 }
 
-func (w *ResponseWriter) WriteHeader(status int) {
+func (w *GatewayResponseWriter) WriteHeader(status int) {
 	if w.headersWritten {
 		return
 	}
@@ -90,7 +120,7 @@ func (w *ResponseWriter) WriteHeader(status int) {
 }
 
 // finish writes the accumulated output to the response.Body
-func (w *ResponseWriter) finish() {
+func (w *GatewayResponseWriter) finish() {
 
 	// Determine if we should Base64 encode the output
 	contentType := w.response.Headers["Content-Type"]
@@ -103,4 +133,42 @@ func (w *ResponseWriter) finish() {
 	} else {
 		w.response.Body = w.output.String()
 	}
+}
+func (w *ALBResponseWriter) finish() {
+
+	// Determine if we should Base64 encode the output
+	contentType := w.response.Headers["Content-Type"]
+
+	// Only encode text content types without base64 encoding
+	w.response.IsBase64Encoded = !textContentTypesRegexp.MatchString(contentType)
+
+	if w.response.IsBase64Encoded {
+		w.response.Body = base64.StdEncoding.EncodeToString(w.output.Bytes())
+	} else {
+		w.response.Body = w.output.String()
+	}
+}
+
+func (w *ALBResponseWriter) WriteHeader(status int) {
+	if w.headersWritten {
+		return
+	}
+
+	w.response.StatusCode = status
+	w.response.StatusDescription = fmt.Sprintf("%d %s", status, http.StatusText(status))
+
+	finalHeaders := make(map[string]string)
+	for k, v := range w.headers {
+		if len(v) > 0 {
+			finalHeaders[k] = v[len(v)-1]
+		}
+	}
+
+	if value, ok := finalHeaders["Content-Type"]; !ok || value == "" {
+		finalHeaders["Content-Type"] = "text/plain; charset=utf-8"
+	}
+
+	w.response.Headers = finalHeaders
+
+	w.headersWritten = true
 }

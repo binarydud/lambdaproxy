@@ -12,7 +12,7 @@ action "fmt" {
 }
 
 action "test" {
-  uses = "apex/actions/go@master"
+  uses = "./.github/actions/go"
   args = "make test"
 }
 
